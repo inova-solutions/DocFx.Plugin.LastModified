@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net461</TargetFramework>
+    <TargetFramework>net472</TargetFramework>
     <AssemblyName>LastModifiedPostProcessor</AssemblyName>
     <RootNamespace>DocFx.Plugin.LastModified</RootNamespace>
     <Version>1.2.4</Version>
@@ -14,15 +14,33 @@
     <Company />
     <Authors>Still Hsu</Authors>
     <Product />
+    <PackageId>last-modified</PackageId>
     <PackageVersion>1.2.5</PackageVersion>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <IncludeBuildOutput Condition="'$(IncludeBuildOutput)'==''">false</IncludeBuildOutput>
   </PropertyGroup>
 
+  <ItemGroup Label="FilesToCopy">
+    <Content Include="$(OutDir)**" Exclude="**\*.pdb" Pack="true" PackagePath=".\content\plugins\" PackageCopyToOutput="true" />
+  </ItemGroup>
+
   <ItemGroup>
-    <PackageReference Include="htmlagilitypack" Version="1.4.9" />
-    <PackageReference Include="libgit2sharp" Version="0.27.0-preview-0096" />
-    <PackageReference Include="Microsoft.Composition" Version="1.0.31" />
-    <PackageReference Include="Microsoft.DocAsCode.Common" Version="2.57.2" />
-    <PackageReference Include="Microsoft.DocAsCode.Plugins" Version="2.57.2" />
+    <PackageReference Include="htmlagilitypack" Version="1.4.9">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="libgit2sharp" Version="0.26.2">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Composition" Version="1.0.31">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.DocAsCode.Common" Version="2.59.2">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.DocAsCode.Plugins" Version="2.59.2">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+
   </ItemGroup>
 
 </Project>

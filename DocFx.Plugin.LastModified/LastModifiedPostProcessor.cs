@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Immutable;
 using System.Composition;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using DocFx.Plugin.LastModified.Helpers;
 using HtmlAgilityPack;
 using LibGit2Sharp;
@@ -21,6 +21,7 @@ namespace DocFx.Plugin.LastModified
     {
         private int _addedFiles;
         private Repository _repo;
+        private static CultureInfo _localCulture = new CultureInfo("de-CH");
 
         public ImmutableDictionary<string, object> PrepareMetadata(ImmutableDictionary<string, object> metadata)
             => metadata;
@@ -35,41 +36,66 @@ namespace DocFx.Plugin.LastModified
             Logger.LogInfo("Begin adding last modified date to items...");
 
             // attempt to fetch git repo from the current project
+            Logger.LogInfo($"Looking for git repo {manifest.SourceBasePath}");
             var gitDirectory = Repository.Discover(manifest.SourceBasePath);
-            if (gitDirectory != null) _repo = new Repository(gitDirectory);
+            if (gitDirectory != null)
+            {
+                Logger.LogInfo($"using git directory {gitDirectory}");
+                _repo = new Repository(gitDirectory);
+                Logger.LogInfo($"connected to git repo: {((_repo == null) ? false : true)}");
+            }
 
             foreach (var manifestItem in manifest.Files.Where(x => x.DocumentType == "Conceptual"))
-            foreach (var manifestItemOutputFile in manifestItem.OutputFiles)
-            {
-                var sourcePath = Path.Combine(manifest.SourceBasePath, manifestItem.SourceRelativePath);
-                var outputPath = Path.Combine(outputFolder, manifestItemOutputFile.Value.RelativePath);
-                if (_repo != null)
+                foreach (var manifestItemOutputFile in manifestItem.OutputFiles)
                 {
-                    var commitInfo = _repo.GetCommitInfo(sourcePath);
-                    if (commitInfo != null)
+                    var sourcePath = Path.Combine(manifest.SourceBasePath, manifestItem.SourceRelativePath);
+                    if (sourcePath.Contains("_work\\"))
                     {
-                        Logger.LogVerbose("Assigning commit date...");
-                        var lastModified = commitInfo.Author.When;
-
-                        var commitHeaderBuilder = new StringBuilder();
-                        Logger.LogVerbose("Appending commit author and email...");
-                        commitHeaderBuilder.AppendLine($"Author:    {commitInfo.Author.Name}");
-                        Logger.LogVerbose("Appending commit SHA...");
-                        commitHeaderBuilder.AppendLine($"Commit:    {commitInfo.Sha}");
-                        
-                        var commitHeader = commitHeaderBuilder.ToString();
-                        // truncate to 200 in case of huge commit body
-                        var commitBody = commitInfo.Message.Truncate(300);
-                        Logger.LogVerbose($"Writing {lastModified} with reason for {outputPath}...");
-                        WriteModifiedDate(outputPath, lastModified, commitHeader, commitBody);
-                        continue;
+                        sourcePath = sourcePath.Replace("_work\\", "");
                     }
-                }
+                    var outputPath = Path.Combine(outputFolder, manifestItemOutputFile.Value.RelativePath);
+                    if (_repo != null)
+                    {
+                        Logger.LogInfo($"checking source path: {sourcePath} for output {outputPath}");
+                        string repoPath = null;
+                        Commit commitInfo = null;
+                        try
+                        {
+                            repoPath = _repo.GetRelativePath(sourcePath);
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.LogError($"Failed to get repo path for file {sourcePath} ({ex.Message})");
+                        }
+                        if (repoPath != null)
+                        {
+                            commitInfo = _repo.GetLastCommitForFile(repoPath);
+                        }
+                        if (commitInfo != null)
+                        {
+                            Logger.LogVerbose("Assigning commit date...");
+                            var lastModified = commitInfo.Author.When;
 
-                var fileLastModified = File.GetLastWriteTimeUtc(sourcePath);
-                Logger.LogVerbose($"Writing {fileLastModified} for {outputPath}...");
-                WriteModifiedDate(outputPath, fileLastModified);
-            }
+                            //var commitHeaderBuilder = new StringBuilder();
+                            //Logger.LogVerbose("Appending commit author and email...");
+                            //commitHeaderBuilder.AppendLine($"Author:    {commitInfo.Author.Name}");
+                            //Logger.LogVerbose("Appending commit SHA...");
+                            //commitHeaderBuilder.AppendLine($"Commit:    {commitInfo.Sha}");
+
+                            //var commitHeader = commitHeaderBuilder.ToString();
+                            //// truncate to 200 in case of huge commit body
+                            //var commitBody = commitInfo.Message.Truncate(300);
+                            //Logger.LogVerbose($"Writing {lastModified} with reason for {outputPath}...");
+                            //WriteModifiedDate(outputPath, lastModified, commitHeader, commitBody);
+                            WriteModifiedDate(outputPath, lastModified, commit: commitInfo);
+                            continue;
+                        }
+                    }
+
+                    var fileLastModified = File.GetLastWriteTimeUtc(sourcePath);
+                    Logger.LogVerbose($"Writing {fileLastModified} for {outputPath}...");
+                    WriteModifiedDate(outputPath, fileLastModified);
+                }
 
             // dispose repo after usage
             _repo?.Dispose();
@@ -78,10 +104,10 @@ namespace DocFx.Plugin.LastModified
             return manifest;
         }
 
-        private void WriteModifiedDate(string outputPath, DateTimeOffset modifiedDate, string commitHeader = null,
-            string commitBody = null)
+        private void WriteModifiedDate(string outputPath, DateTimeOffset modifiedDate, string commitHeader = null, string commitBody = null, Commit commit = null)
         {
-            if (outputPath == null) throw new ArgumentNullException(nameof(outputPath));
+            if (outputPath == null)
+                return;
 
             // load the document
             var htmlDoc = new HtmlDocument();
@@ -95,10 +121,28 @@ namespace DocFx.Plugin.LastModified
                 return;
             }
 
+
+            var modifiedString = $"Zuletzt bearbeitet:<br>{modifiedDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")}";
+            if (commit != null)
+            {
+                var author = commit.Author.Name;
+                if (author != null)
+                {
+                    modifiedString = $"{modifiedString} durch {author}";
+                }
+            }
+
+            var navbar = htmlDoc.DocumentNode.SelectSingleNode("//div[contains(@class, 'contribution')]");
+            if (navbar != null)
+            {
+                AppendModifiedSpan(htmlDoc, navbar, modifiedString);
+            }
+
             var paragraphNode = htmlDoc.CreateElement("p");
-            paragraphNode.InnerHtml = $"This page was last modified at {modifiedDate} (UTC).";
-            var separatorNode = htmlDoc.CreateElement("hr");
-            articleNode.AppendChild(separatorNode);
+            //AppendModifiedSpan(htmlDoc, paragraphNode, modifiedString);
+            //paragraphNode.InnerHtml = modifiedString;
+            //var separatorNode = htmlDoc.CreateElement("hr");
+            //articleNode.AppendChild(separatorNode);
             articleNode.AppendChild(paragraphNode);
 
             if (!string.IsNullOrEmpty(commitHeader))
@@ -120,7 +164,7 @@ namespace DocFx.Plugin.LastModified
                 codeBlockNode.InnerHtml = commitHeader;
                 preCodeBlockNode.AppendChild(codeBlockNode);
                 reasonContainerNode.AppendChild(preCodeBlockNode);
-                
+
                 // inject body
                 preCodeBlockNode = htmlDoc.CreateElement("pre");
                 codeBlockNode = htmlDoc.CreateElement("code");
@@ -137,6 +181,14 @@ namespace DocFx.Plugin.LastModified
 
             htmlDoc.Save(outputPath);
             _addedFiles++;
+        }
+
+        private void AppendModifiedSpan(HtmlDocument htmlDoc, HtmlNode paragraphNode, string modifiedString)
+        {
+            var spanNode = htmlDoc.CreateElement("span");
+            spanNode.SetAttributeValue("class", "");
+            spanNode.InnerHtml = modifiedString;
+            paragraphNode.AppendChild(spanNode);
         }
 
         /// <summary>
