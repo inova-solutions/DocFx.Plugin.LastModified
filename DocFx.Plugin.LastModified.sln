@@ -5,7 +5,7 @@ VisualStudioVersion = 17.1.32407.343
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DocFx.Plugin.LastModified", "DocFx.Plugin.LastModified\DocFx.Plugin.LastModified.csproj", "{F84E2065-3D35-4E07-998A-31F9701B9A6C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocFx.Plugin.LastModified.Test", "DocFx.Plugin.LastModified.Test\DocFx.Plugin.LastModified.Test.csproj", "{232AC6C6-B451-47BA-BF37-41B0169CC125}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DocFx.Plugin.LastModified.Test", "DocFx.Plugin.LastModified.Test\DocFx.Plugin.LastModified.Test.csproj", "{232AC6C6-B451-47BA-BF37-41B0169CC125}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

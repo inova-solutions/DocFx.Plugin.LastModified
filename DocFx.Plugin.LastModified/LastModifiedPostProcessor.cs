@@ -122,73 +122,82 @@ namespace DocFx.Plugin.LastModified
             }
 
 
-            var modifiedString = $"Zuletzt bearbeitet:<br>{modifiedDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")}";
+            var modifiedString = $"Bearbeitet am {modifiedDate.ToLocalTime().ToString("dd.MM.yyyy")}";
             if (commit != null)
             {
                 var author = commit.Author.Name;
                 if (author != null)
                 {
-                    modifiedString = $"{modifiedString} durch {author}";
+                    modifiedString = $"{modifiedString}<br>von {author}";
                 }
             }
 
-            var navbar = htmlDoc.DocumentNode.SelectSingleNode("//div[contains(@class, 'contribution')]");
-            if (navbar != null)
+            var modParent = htmlDoc.DocumentNode.SelectSingleNode("//div[contains(@class, 'contribution')]/ul");
+            if (modParent != null)
             {
-                AppendModifiedSpan(htmlDoc, navbar, modifiedString);
+                AppendModifiedListElement(htmlDoc, modParent, modifiedString);
             }
 
-            var paragraphNode = htmlDoc.CreateElement("p");
+            //var paragraphNode = htmlDoc.CreateElement("p");
             //AppendModifiedSpan(htmlDoc, paragraphNode, modifiedString);
             //paragraphNode.InnerHtml = modifiedString;
             //var separatorNode = htmlDoc.CreateElement("hr");
             //articleNode.AppendChild(separatorNode);
-            articleNode.AppendChild(paragraphNode);
+            //articleNode.AppendChild(paragraphNode);
 
-            if (!string.IsNullOrEmpty(commitHeader))
-            {
-                // inject collapsible container script
-                InjectCollapseScript(htmlDoc);
+            //if (!string.IsNullOrEmpty(commitHeader))
+            //{
+            //    // inject collapsible container script
+            //    InjectCollapseScript(htmlDoc);
 
-                // create collapse container
-                var collapsibleNode = htmlDoc.CreateElement("div");
-                collapsibleNode.SetAttributeValue("class", "collapse-container last-modified");
-                collapsibleNode.SetAttributeValue("id", "accordion");
-                var reasonHeaderNode = htmlDoc.CreateElement("span");
-                reasonHeaderNode.InnerHtml = "<span class=\"arrow-r\"></span>Commit Message";
-                var reasonContainerNode = htmlDoc.CreateElement("div");
+            //    // create collapse container
+            //    var collapsibleNode = htmlDoc.CreateElement("div");
+            //    collapsibleNode.SetAttributeValue("class", "collapse-container last-modified");
+            //    collapsibleNode.SetAttributeValue("id", "accordion");
+            //    var reasonHeaderNode = htmlDoc.CreateElement("span");
+            //    reasonHeaderNode.InnerHtml = "<span class=\"arrow-r\"></span>Commit Message";
+            //    var reasonContainerNode = htmlDoc.CreateElement("div");
 
-                // inject header
-                var preCodeBlockNode = htmlDoc.CreateElement("pre");
-                var codeBlockNode = htmlDoc.CreateElement("code");
-                codeBlockNode.InnerHtml = commitHeader;
-                preCodeBlockNode.AppendChild(codeBlockNode);
-                reasonContainerNode.AppendChild(preCodeBlockNode);
+            //    // inject header
+            //    var preCodeBlockNode = htmlDoc.CreateElement("pre");
+            //    var codeBlockNode = htmlDoc.CreateElement("code");
+            //    codeBlockNode.InnerHtml = commitHeader;
+            //    preCodeBlockNode.AppendChild(codeBlockNode);
+            //    reasonContainerNode.AppendChild(preCodeBlockNode);
 
-                // inject body
-                preCodeBlockNode = htmlDoc.CreateElement("pre");
-                codeBlockNode = htmlDoc.CreateElement("code");
-                codeBlockNode.SetAttributeValue("class", "xml");
-                codeBlockNode.InnerHtml = commitBody;
-                preCodeBlockNode.AppendChild(codeBlockNode);
-                reasonContainerNode.AppendChild(preCodeBlockNode);
+            //    // inject body
+            //    preCodeBlockNode = htmlDoc.CreateElement("pre");
+            //    codeBlockNode = htmlDoc.CreateElement("code");
+            //    codeBlockNode.SetAttributeValue("class", "xml");
+            //    codeBlockNode.InnerHtml = commitBody;
+            //    preCodeBlockNode.AppendChild(codeBlockNode);
+            //    reasonContainerNode.AppendChild(preCodeBlockNode);
 
-                // inject the entire block
-                collapsibleNode.AppendChild(reasonHeaderNode);
-                collapsibleNode.AppendChild(reasonContainerNode);
-                articleNode.AppendChild(collapsibleNode);
-            }
+            //    // inject the entire block
+            //    collapsibleNode.AppendChild(reasonHeaderNode);
+            //    collapsibleNode.AppendChild(reasonContainerNode);
+            //    articleNode.AppendChild(collapsibleNode);
+            //}
 
             htmlDoc.Save(outputPath);
             _addedFiles++;
         }
 
-        private void AppendModifiedSpan(HtmlDocument htmlDoc, HtmlNode paragraphNode, string modifiedString)
+        //private void AppendModifiedSpan(HtmlDocument htmlDoc, HtmlNode parentNode, string modifiedString)
+        //{
+        //    var spanNode = htmlDoc.CreateElement("span");
+        //    spanNode.SetAttributeValue("class", "");
+        //    spanNode.InnerHtml = modifiedString;
+        //    parentNode.AppendChild(spanNode);
+        //}
+
+        private void AppendModifiedListElement(HtmlDocument htmlDoc, HtmlNode parentNode, string modifiedString)
         {
-            var spanNode = htmlDoc.CreateElement("span");
-            spanNode.SetAttributeValue("class", "");
-            spanNode.InnerHtml = modifiedString;
-            paragraphNode.AppendChild(spanNode);
+            var node = htmlDoc.CreateElement("li");
+            node.SetAttributeValue("class", "contribution-mod");
+            node.InnerHtml = modifiedString;
+            //parentNode.AppendChild(node);
+            parentNode.InsertBefore(node, parentNode.FirstChild);
         }
 
         /// <summary>
